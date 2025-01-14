@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spreadsheet Mimic with Graphs</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 20px;
+            width: 80%;
+            margin: auto;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+            width: 100px;
+            cursor: pointer;
+        }
+
+        .selected {
+            background-color: #d3d3d3;
+            border: 2px solid #000;
+        }
+
+        button {
+            padding: 10px;
+            margin: 10px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        .toolbar {
+            margin-bottom: 20px;
+        }
+
+        .add-row-col-btns {
+            margin-top: 20px;
+        }
+
+        .graph-container {
+            margin-top: 20px;
+        }
+
+        canvas {
+            width: 80% !important;
+            margin: 0 auto;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Spreadsheet Mimic with Graphs</h1>
+        <div class="toolbar">
+            <button onclick="sumCells()">SUM</button>
+            <button onclick="averageCells()">AVERAGE</button>
+            <button onclick="maxCells()">MAX</button>
+            <button onclick="minCells()">MIN</button>
+            <button onclick="countCells()">COUNT</button>
+            <button onclick="trimCells()">TRIM</button>
+            <button onclick="upperCells()">UPPER</button>
+            <button onclick="lowerCells()">LOWER</button>
+            <button onclick="removeDuplicates()">REMOVE DUPLICATES</button>
+            <button onclick="findAndReplace()">FIND AND REPLACE</button>
+            <button onclick="generateGraph()">GENERATE GRAPH</button>
+        </div>
+
+        <table id="spreadsheet">
+            <!-- Pre-filled rows and columns -->
+            <tr>
+                <td class="cell"></td>
+                <td class="cell"></td>
+                <td class="cell"></td>
+            </tr>
+            <tr>
+                <td class="cell"></td>
+                <td class="cell"></td>
+                <td class="cell"></td>
+            </tr>
+            <tr>
+                <td class="cell"></td>
+                <td class="cell"></td>
+                <td class="cell"></td>
+            </tr>
+        </table>
+
+        <div class="add-row-col-btns">
+            <button onclick="addRow()">Add Row</button>
+            <button onclick="removeRow()">Remove Row</button>
+            <button onclick="addColumn()">Add Column</button>
+            <button onclick="removeColumn()">Remove Column</button>
+        </div>
+
+        <div class="graph-container">
+            <canvas id="chart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Global variable to store selected cells for input
+        let selectedInputCells = [];
+
+        // Add event listener for dynamic cell editing
+        document.addEventListener('click', function (e) {
+            if (e.target && e.target.classList.contains('cell')) {
+                const cell = e.target;
+
+                // Toggle the selection of the cell
+                if (cell.contentEditable === "true") return; // Already editing, do nothing
+
+                // Make the cell editable
+                if (e.shiftKey) {
+                    if (!selectedInputCells.includes(cell)) {
+                        selectedInputCells.push(cell);
+                        cell.classList.add('selected');
+                    }
+                } else {
+                    // Clear previous selection and allow new selection
+                    selectedInputCells = [cell];
+                    document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+                    cell.classList.add('selected');
+                }
+
+                // Make it editable
+                cell.contentEditable = "true";
+                cell.focus();
+
+                // When user finishes editing, save the value
+                cell.addEventListener('blur', function() {
+                    cell.contentEditable = "false"; // Remove editable mode
+                });
+            }
+        });
+
+        // Function to perform SUM
+        function sumCells() {
+            let sum = 0;
+            selectedInputCells.forEach(cell => {
+                sum += parseFloat(cell.textContent) || 0;
+            });
+            setOutputCell(sum);
+        }
+
+        // Function to perform AVERAGE
+        function averageCells() {
+            let sum = 0;
+            selectedInputCells.forEach(cell => {
+                sum += parseFloat(cell.textContent) || 0;
+            });
+            let average = sum / selectedInputCells.length;
+            setOutputCell(average);
+        }
+
+        // Function to perform MAX
+        function maxCells() {
+            let max = Math.max(...selectedInputCells.map(cell => parseFloat(cell.textContent) || -Infinity));
+            setOutputCell(max);
+        }
+
+        // Function to perform MIN
+        function minCells() {
+            let min = Math.min(...selectedInputCells.map(cell => parseFloat(cell.textContent) || Infinity));
+            setOutputCell(min);
+        }
+
+        // Function to perform COUNT
+        function countCells() {
+            let count = selectedInputCells.filter(cell => !isNaN(cell.textContent) && cell.textContent.trim() !== "").length;
+            setOutputCell(count);
+        }
+
+        // Function to trim text
+        function trimCells() {
+            selectedInputCells.forEach(cell => {
+                cell.textContent = cell.textContent.trim();
+            });
+        }
+
+        // Function to convert text to UPPERCASE
+        function upperCells() {
+            selectedInputCells.forEach(cell => {
+                cell.textContent = cell.textContent.toUpperCase();
+            });
+        }
+
+        // Function to convert text to lowercase
+        function lowerCells() {
+            selectedInputCells.forEach(cell => {
+                cell.textContent = cell.textContent.toLowerCase();
+            });
+        }
+
+        // Function to remove duplicates
+        function removeDuplicates() {
+            let uniqueValues = [...new Set(selectedInputCells.map(cell => cell.textContent))];
+            selectedInputCells.forEach((cell, index) => {
+                cell.textContent = uniqueValues[index] || '';
+            });
+        }
+
+        // Function to find and replace text
+        function findAndReplace() {
+            let findText = prompt("Enter text to find:");
+            let replaceText = prompt("Enter text to replace with:");
+            selectedInputCells.forEach(cell => {
+                if (cell.textContent.includes(findText)) {
+                    cell.textContent = cell.textContent.replace(new RegExp(findText, 'g'), replaceText);
+                }
+            });
+        }
+
+        // Function to generate a bar graph from selected cells
+        function generateGraph() {
+            let labels = selectedInputCells.map(cell => cell.textContent);
+            let data = labels.map(val => parseFloat(val) || 0);
+
+            const ctx = document.getElementById('chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Data Visualization',
+                        data: data,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Helper function to set the output cell's value
+        function setOutputCell(value) {
+            let outputCell = document.querySelector('.output-cell.selected');
+            if (outputCell) {
+                outputCell.textContent = value;
+            }
+        }
+
+        // Add row
+        function addRow() {
+            let table = document.getElementById('spreadsheet');
+            let newRow = table.insertRow();
+            let numColumns = table.rows[0] ? table.rows[0].cells.length : 0; // Get number of columns if any exist
+            for (let i = 0; i < numColumns; i++) {
+                let newCell = newRow.insertCell(i);
+                newCell.classList.add('cell');
+                newCell.textContent = "";
+            }
+        }
+
+        // Remove row
+        function removeRow() {
+            let table = document.getElementById('spreadsheet');
+            if (table.rows.length > 1) {
+                table.deleteRow(table.rows.length - 1);
+            }
+        }
+
+        // Add column
+        function addColumn() {
+            let table = document.getElementById('spreadsheet');
+            for (let i = 0; i < table.rows.length; i++) {
+                let newCell = table.rows[i].insertCell();
+                newCell.classList.add('cell');
+                newCell.textContent = "";
+            }
+        }
+
+        // Remove column
+        function removeColumn() {
+            let table = document.getElementById('spreadsheet');
+            if (table.rows[0].cells.length > 1) {
+                for (let i = 0; i < table.rows.length; i++) {
+                    table.rows[i].deleteCell(table.rows[i].cells.length - 1);
+                }
+            }
+        }
+
+        // Add event listener for dynamic cell selection
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.addEventListener('click', function() {
+                if (this.classList.contains('output-cell')) {
+                    this.classList.remove('output-cell');
+                } else {
+                    this.classList.add('selected');
+                }
+            });
+        });
+
+        // Add event listener to allow users to select an output cell
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.addEventListener('dblclick', function() {
+                if (this.classList.contains('selected')) {
+                    this.classList.remove('selected');
+                    this.classList.add('output-cell');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
